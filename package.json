@@ -1,6 +1,6 @@
 {
   "name": "local-front-env",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "main": "dist-electron/main/index.js",
   "description": "Simple frontend env",
   "author": "ssav0",
