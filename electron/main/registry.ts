@@ -1,5 +1,5 @@
 import path from 'node:path';
-import * as os from 'node:os';
+
 import { Readable } from 'stream';
 
 import NpmRegistryClient from 'npm-registry-client';
@@ -7,12 +7,11 @@ import * as tar from 'tar';
 import * as fs from 'fs';
 import { Package } from '../../types/types';
 import { groupBy } from 'lodash';
+import { DEST_DIR } from './constants';
 
 const registryUrl = 'https://registry.npmjs.org';
 const client = new NpmRegistryClient({ registry: registryUrl });
 
-const APP_DIR = 'frontend-env-versions';
-const DEST_DIR = path.join(os.homedir(), APP_DIR);
 
 const getFullURI = (
     pkgName: string,

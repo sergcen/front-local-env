@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import './App.scss';
 import {
     useDownloadPackageVersion,
@@ -59,10 +59,30 @@ function App() {
             installLocalPackage({ filePath });
         }
     }, []);
-    const { getRootProps } = useDropzone({
-        onDrop,
-        noClick: true,
-    });
+
+    useEffect(() => {
+        const handlerDragOver = (e: DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        const handlerDrop = (event: DragEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        
+            for (const f of event?.dataTransfer?.files || []) {
+                installLocalPackage({ filePath: f.path });
+                return;
+            }
+        }
+
+        document.addEventListener('dragover', handlerDragOver);
+        document.addEventListener('drop', handlerDrop);
+
+        return () => {
+            document.removeEventListener('dragover', handlerDragOver);
+            document.removeEventListener('drop', handlerDrop);
+        }
+    })
 
     const checkAndDownload = async (packageName: string, version: string) => {
         try {
@@ -194,7 +214,7 @@ function App() {
     ];
 
     return (
-        <div className="App" {...getRootProps()}>
+        <div className="App">
             <Space style={{ display: 'flex' }} direction="vertical">
                 {contextHolder}
                 <Collapse>

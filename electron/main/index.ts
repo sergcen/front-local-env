@@ -11,6 +11,8 @@ import {
 } from './registry';
 import { localServer } from './localServer';
 import { Package } from '../../types/types';
+import { DEST_DIR } from './constants';
+import * as fs from 'fs';
 
 // The built directory structure
 //
@@ -190,3 +192,6 @@ ipcMain.handle('getServerStatus', () => {
 localServer.on('active', (value: boolean) => {
     win.webContents.send('serverStatus', value);
 });
+
+
+fs.mkdirSync(DEST_DIR, { recursive: true });
