@@ -2,20 +2,13 @@
   "name": "local-front-env",
   "version": "2.2.0",
   "main": "dist-electron/main/index.js",
-  "description": "Electron Vite React boilerplate.",
-  "author": "草鞋没号 <308487730@qq.com>",
+  "description": "Simple frontend env",
+  "author": "ssav0",
   "license": "MIT",
   "private": true,
   "debug": {
     "env": {
       "VITE_DEV_SERVER_URL": "http://127.0.0.1:7777/"
-    }
-  },
-  "build": {
-    "appId": "com.example.my-frontend-env",
-    "productName": "CustomFrontendEnv",
-    "win": {
-      "requestedExecutionLevel": "highestAvailable"
     }
   },
   "scripts": {
@@ -26,16 +19,26 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "antd": "^5.4.2",
     "electron-updater": "^5.3.0",
-    "hostile": "^1.3.3"
+    "hostile": "^1.3.3",
+    "lodash": "^4.17.21",
+    "node-fetch": "^3.3.1",
+    "npm-registry-client": "^8.6.0",
+    "react-dropzone": "^14.2.3",
+    "react-query": "^3.39.3",
+    "react-use": "^17.4.0",
+    "serve-handler": "^6.1.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.32.0",
+    "@types/node-fetch": "^2.6.3",
     "@types/react": "^18.0.28",
     "@types/react-dom": "^18.0.11",
     "@vitejs/plugin-react": "^3.1.0",
     "electron": "^23.2.0",
     "electron-builder": "^23.6.0",
+    "prettier": "^2.8.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sass": "^1.60.0",
@@ -43,6 +46,10 @@
     "vite": "^4.1.4",
     "vite-plugin-electron": "^0.11.1",
     "vite-plugin-electron-renderer": "^0.13.14"
+  },
+  "prettier": {
+    "tabWidth": 4,
+    "singleQuote": true
   },
   "engines": {
     "node": "^14.18.0 || >=16.0.0"

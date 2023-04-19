@@ -1,56 +1,255 @@
-import nodeLogo from './assets/node.svg'
-import {useEffect, useState} from 'react'
-import Update from '@/components/update'
-import './App.scss'
-import {ipcRenderer} from "electron";
-import IpcRendererEvent = Electron.IpcRendererEvent;
+import React, { useCallback, useState } from 'react';
+import './App.scss';
+import {
+    useDownloadPackageVersion,
+    useGetPackageVersion,
+    useInstalledVersions,
+    useInstallLocalPackage,
+} from '@/collections/packages';
+import Search from 'antd/es/input/Search';
+import {
+    Button,
+    Collapse,
+    Form,
+    Input,
+    notification,
+    Space,
+    Table,
+    TableColumnsType,
+    Tag,
+} from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
+import { ServerStatus } from '@/components/serverStatus/ServerStatus';
+import { ServerToggleActions } from '@/components/serverStatus/ServerToggleActions';
+import { getSettings, setSettings, settings } from '@/settings';
+import { useSetCurrentPkgRunning } from '@/components/serverStatus/ServerState';
+import { Package } from '../types/types';
+import { useDropzone } from 'react-dropzone';
 
-console.log('[App.tsx]', `Hello world from Electron ${process.versions.electron}!`)
+const { Panel } = Collapse;
+
+const isInstalled = (intalled: Package[], pkg: Package) => {
+    return Boolean(intalled.find((p) => p.versionFromMeta === pkg.version));
+};
 
 function App() {
-  const [count, setCount] = useState(0);
-  const [isActive, setIsActive] = useState(false);
+    const [search, setSearch] = useState('');
+    const { registry } = getSettings();
+    const [messageApi, contextHolder] = notification.useNotification();
 
-    useEffect(() => {
-        const handler = (event: IpcRendererEvent, data: boolean) => {
-            setIsActive(data);
-            console.log('Получены данные от главного процесса:', data);
-        };
-        ipcRenderer.on('hosts-active', handler);
+    const { mutateAsync: downloadPackage, isLoading: isDownloadingPkgData } =
+        useDownloadPackageVersion(registry);
+    const {
+        mutateAsync: installLocalPackage,
+        isLoading: isInstallingLocalPkg,
+    } = useInstallLocalPackage();
 
-        return () => {
-            ipcRenderer.off('hosts-active', handler);
+    const { mutateAsync: getPkgVersion, isLoading: isDownloadingPkgVersion } =
+        useGetPackageVersion(registry);
+
+    const { isLoading: isFetchingInstalledVersions, data: installedVersions } =
+        useInstalledVersions();
+    const isDownloading =
+        isDownloadingPkgVersion || isDownloadingPkgData || isInstallingLocalPkg;
+
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        const filePath = acceptedFiles[0]?.path;
+
+        if (filePath) {
+            installLocalPackage({ filePath });
         }
-    }, [])
+    }, []);
+    const { getRootProps } = useDropzone({
+        onDrop,
+        noClick: true,
+    });
 
-  return (
-    <div className='App'>
-      <div className='logo-box'>
-        <a href='https://github.com/electron-vite/electron-vite-react' target='_blank'>
-          <img src='./vite.svg' className='logo vite' alt='Electron + Vite logo' />
-          <img src='./electron.svg' className='logo electron' alt='Electron + Vite logo' />
-        </a>
-      </div>
-      <h1>Electron + Vite + React</h1>
-      <div className='card'>
-          {isActive ? 'ACTIVE' : 'UNACTIVE'}
-        <button onClick={() => ipcRenderer.send('toggle-hosts', 'trade.local.ru')}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className='read-the-docs'>
-        Click on the Electron + Vite logo to learn more
-      </p>
-      <div className='flex-center'>
-        Place static files into the<code>/public</code> folder <img style={{ width: '5em' }} src={nodeLogo} alt='Node logo' />
-      </div>
+    const checkAndDownload = async (packageName: string, version: string) => {
+        try {
+            const pkg = await getPkgVersion({ packageName, version });
 
-      <Update />
-    </div>
-  )
+            if (installedVersions && isInstalled(installedVersions, pkg)) {
+                messageApi.success({
+                    message: 'Последняя версия уже установлена',
+                    duration: 2,
+                });
+                return;
+            }
+
+            const metaData = await downloadPackage({ packageName, version });
+            messageApi.success({
+                message: `${metaData.version} успешно установлена`,
+                duration: 2,
+            });
+        } catch (e) {
+            // @ts-expect-error
+            messageApi.error({ message: e?.message as string });
+        }
+    };
+    const [currentServerPackage] = useSetCurrentPkgRunning();
+    const isPackageRunning = (
+        pkg: Package,
+        ranPkg: Package | undefined = currentServerPackage
+    ) => {
+        if (!ranPkg) return false;
+
+        if (ranPkg.name === pkg.name && ranPkg.version === pkg.version) {
+            return true;
+        }
+        if (
+            pkg.versions &&
+            pkg.versions.some((p: Package) => isPackageRunning(p, ranPkg))
+        ) {
+            return true;
+        }
+
+        return false;
+    };
+
+    const onSearchHandler = useCallback(async () => {
+        const [pkgName, version = 'latest'] = search.split('@');
+        await checkAndDownload(pkgName, version);
+        setSearch('');
+    }, [search, checkAndDownload]);
+
+    const expandedRowRender = (data: Package) => {
+        const columns: TableColumnsType<Package> = [
+            {
+                title: 'Версия',
+                key: 'version',
+                render: (pkg: Package) => {
+                    return isPackageRunning(pkg) ? (
+                        <b>{pkg.version}</b>
+                    ) : (
+                        pkg.version
+                    );
+                },
+            },
+            { title: 'Время публикации', dataIndex: 'date', key: 'date' },
+            {
+                title: 'Запуск',
+                align: 'right',
+                render: (pkg) => (
+                    <Space size="middle">
+                        <ServerToggleActions
+                            pkg={pkg}
+                            active={isPackageRunning(pkg)}
+                        />
+                    </Space>
+                ),
+            },
+        ];
+
+        return (
+            <Table
+                columns={columns}
+                dataSource={data.versions}
+                pagination={false}
+            />
+        );
+    };
+
+    const columns: TableColumnsType<Package> = [
+        {
+            title: 'Имя',
+            key: 'name',
+            dataIndex: 'name',
+        },
+        { title: 'Ветка', dataIndex: 'branch', key: 'branch' },
+        {
+            title: 'Статус',
+            render: (pkg: Package) => {
+                const active = isPackageRunning(pkg);
+                return (
+                    <Tag color={active ? 'green' : 'default'}>
+                        {active ? 'Запущен' : 'Установлен'}
+                    </Tag>
+                );
+            },
+        },
+        {
+            title: 'Действия',
+            align: 'right',
+            render: function (data) {
+                return (
+                    <Space>
+                        <Button
+                            shape="circle"
+                            icon={<ReloadOutlined />}
+                            loading={isDownloading}
+                            onClick={() =>
+                                checkAndDownload(data.name, data.branch)
+                            }
+                        ></Button>
+                        {/*<Button*/}
+                        {/*    shape="circle"*/}
+                        {/*    danger*/}
+                        {/*    icon={<DeleteOutlined />}*/}
+                        {/*    loading={isDownloading}*/}
+                        {/*></Button>*/}
+                    </Space>
+                );
+            },
+        },
+    ];
+
+    return (
+        <div className="App" {...getRootProps()}>
+            <Space style={{ display: 'flex' }} direction="vertical">
+                {contextHolder}
+                <Collapse>
+                    <Panel header="Настройки" key="1">
+                        <Space style={{ width: 400 }} direction="vertical">
+                            <Form labelCol={{ span: 8 }}>
+                                <Form.Item label="Port">
+                                    <Input
+                                        placeholder="PORT default(3000)"
+                                        defaultValue={settings.PORT}
+                                        onChange={(e) =>
+                                            setSettings('PORT', e.target.value)
+                                        }
+                                    />
+                                </Form.Item>
+                                <Form.Item label="NPM registry">
+                                    <Input
+                                        placeholder="NPM registry"
+                                        defaultValue={settings.registry}
+                                        onChange={(e) =>
+                                            setSettings(
+                                                'registry',
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+                                </Form.Item>
+                            </Form>
+                        </Space>
+                    </Panel>
+                </Collapse>
+                <Search
+                    placeholder="Название ветки"
+                    enterButton="Добавить"
+                    size="large"
+                    loading={isDownloading}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onSearch={() => search && onSearchHandler()}
+                />
+                <ServerStatus />
+                <Table
+                    rowKey={(pkg) => `${pkg.name}@${pkg.branch}`}
+                    columns={columns}
+                    expandable={{
+                        expandedRowRender,
+                        defaultExpandedRowKeys: ['0'],
+                    }}
+                    pagination={false}
+                    loading={isFetchingInstalledVersions}
+                    dataSource={installedVersions}
+                />
+            </Space>
+        </div>
+    );
 }
 
-export default App
+export default App;

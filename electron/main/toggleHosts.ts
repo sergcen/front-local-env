@@ -8,31 +8,15 @@ const removeHost = util.promisify(hostile.remove);
 const getHost = util.promisify(hostile.get);
 
 export function setHost(hostname: string) {
-    return addHost(hostname, address)
-        .then(() => {
-            console.log(`Hosts file for ${hostname} is set to ${address}`);
-        })
-        .catch((error) => {
-            console.error(`error: ${error}`);
-        });
+    return addHost(address, hostname);
 }
 
 export function unsetHost(hostname: string) {
-    return removeHost(hostname, address)
-        .then(() => {
-            console.log(`Hosts file for ${hostname} is unset`);
-        })
-        .catch((error) => {
-            console.error(`error: ${error}`);
-        });
+    return removeHost(address, hostname);
 }
 
-export function hasHost(hostname: string) {
-    return getHost(false, function (err, lines) {
-        if (err) {
-            console.error(err.message)
-        }
+export async function hasHost(hostname: string) {
+    const lines = await getHost(false);
 
-        return Boolean(lines.find(([_, host]) => host === hostname));
-    })
+    return Boolean(lines.find(([_, host]) => host === hostname));
 }
