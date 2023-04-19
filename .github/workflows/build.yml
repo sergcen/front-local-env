@@ -31,8 +31,13 @@ jobs:
           # If the commit is tagged with a version (e.g. "v1.0.0"),
           # release the app after building
           release: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      - name: Archive code coverage results
+      - name: MacOS build
         uses: actions/upload-artifact@v3
         with:
-          name: code-coverage-report
-          path: output/test/code-coverage.html
+          name: local-front-end-MacOS
+          path: release/local-front-env.dmg
+      - name: Windows build
+        uses: actions/upload-artifact@v3
+        with:
+          name: local-front-end-Windows
+          path: release\local-front-env.exe
