@@ -21,10 +21,12 @@ import {
 import { ReloadOutlined } from '@ant-design/icons';
 import { ServerStatus } from '@/components/serverStatus/ServerStatus';
 import { ServerToggleActions } from '@/components/serverStatus/ServerToggleActions';
-import { getSettings, setSettings, settings } from '@/settings';
+import {
+    setSettings as setSavedSettings,
+    settings as savedSettings,
+} from '@/settings';
 import { useSetCurrentPkgRunning } from '@/components/serverStatus/ServerState';
 import { Package } from '../types/types';
-import { useDropzone } from 'react-dropzone';
 
 const { Panel } = Collapse;
 
@@ -34,18 +36,25 @@ const isInstalled = (intalled: Package[], pkg: Package) => {
 
 function App() {
     const [search, setSearch] = useState('');
-    const { registry } = getSettings();
     const [messageApi, contextHolder] = notification.useNotification();
+    const [settings, setSettings] = useState(savedSettings);
+
+    const setCurrentSettings = (key: 'PORT' | 'registry', value: string) => {
+        setSavedSettings(key, value);
+        setSettings((curSettings) => {
+            return { ...curSettings, [key]: value };
+        });
+    };
 
     const { mutateAsync: downloadPackage, isLoading: isDownloadingPkgData } =
-        useDownloadPackageVersion(registry);
+        useDownloadPackageVersion(settings.registry);
     const {
         mutateAsync: installLocalPackage,
         isLoading: isInstallingLocalPkg,
     } = useInstallLocalPackage();
 
     const { mutateAsync: getPkgVersion, isLoading: isDownloadingPkgVersion } =
-        useGetPackageVersion(registry);
+        useGetPackageVersion(settings.registry);
 
     const { isLoading: isFetchingInstalledVersions, data: installedVersions } =
         useInstalledVersions();
@@ -64,16 +73,16 @@ function App() {
         const handlerDragOver = (e: DragEvent) => {
             e.preventDefault();
             e.stopPropagation();
-        }
+        };
         const handlerDrop = (event: DragEvent) => {
             event.preventDefault();
             event.stopPropagation();
-        
+
             for (const f of event?.dataTransfer?.files || []) {
                 installLocalPackage({ filePath: f.path });
                 return;
             }
-        }
+        };
 
         document.addEventListener('dragover', handlerDragOver);
         document.addEventListener('drop', handlerDrop);
@@ -81,10 +90,13 @@ function App() {
         return () => {
             document.removeEventListener('dragover', handlerDragOver);
             document.removeEventListener('drop', handlerDrop);
-        }
-    })
+        };
+    });
 
-    const checkAndDownload = async (packageName: string, version: string) => {
+    const checkAndDownload = async (
+        packageName: string,
+        version: string = 'latest'
+    ) => {
         try {
             const pkg = await getPkgVersion({ packageName, version });
 
@@ -197,9 +209,7 @@ function App() {
                             shape="circle"
                             icon={<ReloadOutlined />}
                             loading={isDownloading}
-                            onClick={() =>
-                                checkAndDownload(data.name, data.branch)
-                            }
+                            onClick={() => checkAndDownload(data.name)}
                         ></Button>
                         {/*<Button*/}
                         {/*    shape="circle"*/}
@@ -226,7 +236,10 @@ function App() {
                                         placeholder="PORT default(3000)"
                                         defaultValue={settings.PORT}
                                         onChange={(e) =>
-                                            setSettings('PORT', e.target.value)
+                                            setCurrentSettings(
+                                                'PORT',
+                                                e.target.value
+                                            )
                                         }
                                     />
                                 </Form.Item>
@@ -235,7 +248,7 @@ function App() {
                                         placeholder="NPM registry"
                                         defaultValue={settings.registry}
                                         onChange={(e) =>
-                                            setSettings(
+                                            setCurrentSettings(
                                                 'registry',
                                                 e.target.value
                                             )
