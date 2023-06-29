@@ -28,7 +28,7 @@ class LocalServer extends EventEmitter {
                 return handler(request, response, {
                     rewrites: [
                         {
-                            source: '/!(*.*)',
+                            source: '!(*.+)',
                             destination: '/index.html',
                         },
                     ],
