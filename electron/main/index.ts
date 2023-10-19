@@ -13,6 +13,7 @@ import { localServer } from './localServer';
 import { Package } from '../../types/types';
 import { DEST_DIR } from './constants';
 import * as fs from 'fs';
+import { dnsServer } from './dnsServer';
 
 // The built directory structure
 //
@@ -193,5 +194,22 @@ localServer.on('active', (value: boolean) => {
     win.webContents.send('serverStatus', value);
 });
 
+dnsServer.on('active', (value: boolean) => {
+    win.webContents.send('DNSServerStatus', value);
+});
+
+ipcMain.handle(
+    'startDNSServer',
+    async (event, domains: string[], target: string) => {
+        return dnsServer.startServer(domains, target);
+    }
+);
+
+ipcMain.handle(
+    'stopDNSServer',
+    async (event, port: number, pkgPath: string) => {
+        return dnsServer.stopServer();
+    }
+);
 
 fs.mkdirSync(DEST_DIR, { recursive: true });

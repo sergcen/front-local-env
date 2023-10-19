@@ -27,6 +27,8 @@ import {
 } from '@/settings';
 import { useSetCurrentPkgRunning } from '@/components/serverStatus/ServerState';
 import { Package } from '../types/types';
+import { DnsServerStatus } from '@/components/dnsServerStatus/DnsServerStatus';
+import TextArea from 'antd/es/input/TextArea';
 
 const { Panel } = Collapse;
 
@@ -39,7 +41,10 @@ function App() {
     const [messageApi, contextHolder] = notification.useNotification();
     const [settings, setSettings] = useState(savedSettings);
 
-    const setCurrentSettings = (key: 'PORT' | 'registry', value: string) => {
+    const setCurrentSettings = (
+        key: keyof typeof savedSettings,
+        value: string
+    ) => {
         setSavedSettings(key, value);
         setSettings((curSettings) => {
             return { ...curSettings, [key]: value };
@@ -255,6 +260,30 @@ function App() {
                                         }
                                     />
                                 </Form.Item>
+                                <Form.Item label="DNS Domains">
+                                    <TextArea
+                                        placeholder="DNS Domains"
+                                        defaultValue={settings.DNSDomains}
+                                        onChange={(e) =>
+                                            setCurrentSettings(
+                                                'DNSDomains',
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+                                </Form.Item>
+                                <Form.Item label="Local IP">
+                                    <Input
+                                        placeholder="Local IP"
+                                        defaultValue={'192.168.x.x'}
+                                        onChange={(e) =>
+                                            setCurrentSettings(
+                                                'localIP',
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+                                </Form.Item>
                             </Form>
                         </Space>
                     </Panel>
@@ -269,6 +298,7 @@ function App() {
                     onSearch={() => search && onSearchHandler()}
                 />
                 <ServerStatus />
+                <DnsServerStatus />
                 <Table
                     rowKey={(pkg) => `${pkg.name}@${pkg.branch}`}
                     columns={columns}
