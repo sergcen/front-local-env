@@ -53,6 +53,8 @@ class LocalServer extends EventEmitter {
                     ],
 
                     public: this.currentDir,
+
+                    cleanUrls: false,
                 });
             }
         );
